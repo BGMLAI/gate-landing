@@ -88,20 +88,22 @@
   </footer>
 </div>
 <script>
-// Fake-door: capture intent. POST do /api/lead jesli istnieje, inaczej localStorage + mailto fallback.
+// Fake-door: capture intent. Wysyła lead na Formspree (działa na statycznym GH Pages,
+// lead wpada na maila właściciela). Fallback localStorage gdy offline/endpoint nieustawiony.
+// SETUP (user, 2 min): formspree.io → New Form → wklej form ID poniżej zamiast FORM_ID.
+var FORMSPREE = "https://formspree.io/f/FORM_ID";  // <- podmień FORM_ID po rejestracji (darmowe)
 async function submitEmail(e){
   e.preventDefault();
   var inp = e.target.querySelector('input[type=email]');
   var email = inp.value.trim();
   if(!email) return false;
-  var lead = {email:email, ts:new Date().toISOString(), ref:document.referrer||'direct', ua:navigator.userAgent};
-  try{
-    await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lead)});
-  }catch(_){}
+  var lead = {email:email, ts:new Date().toISOString(), ref:document.referrer||'direct', _subject:'Gate early-access lead'};
+  if(FORMSPREE.indexOf('FORM_ID')===-1){
+    try{ await fetch(FORMSPREE,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(lead)}); }catch(_){}
+  }
   try{ var L=JSON.parse(localStorage.getItem('gate_leads')||'[]'); L.push(lead); localStorage.setItem('gate_leads',JSON.stringify(L)); }catch(_){}
   document.getElementById('ok').style.display='block';
   e.target.reset();
-  // analityka: licznik konwersji widoczny w konsoli i localStorage
   console.log('[gate-lead]', lead);
   return false;
 }
