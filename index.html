@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gate — Stop runaway AI-agent spend</title>
+<meta name="description" content="Your coding agent burns $1-15k/mo wandering down wrong paths. Gate escalates only when the model is actually uncertain — not when output is short. Proxy, 10-min setup, open-core.">
+<style>
+  :root{--bg:#0d0d0f;--fg:#f5f5f4;--mut:#9a9a96;--acc:#e08a3c;--ok:#4a9c5d;--card:#17171a;--bd:#2a2a2e}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,Segoe UI,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto;padding:0 24px}
+  header{padding:72px 0 8px}
+  .badge{display:inline-block;font-size:13px;color:var(--acc);border:1px solid var(--acc);border-radius:99px;padding:4px 12px;margin-bottom:24px}
+  h1{font-size:clamp(30px,6vw,46px);line-height:1.1;letter-spacing:-.02em;font-weight:800}
+  h1 .hl{color:var(--acc)}
+  .sub{font-size:19px;color:var(--mut);margin-top:20px;max-width:600px}
+  .cta{margin-top:36px;display:flex;gap:10px;flex-wrap:wrap}
+  input[type=email]{flex:1;min-width:240px;background:var(--card);border:1px solid var(--bd);color:var(--fg);padding:14px 16px;border-radius:10px;font-size:15px}
+  button{background:var(--acc);color:#1a1208;border:0;padding:14px 22px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+  button:hover{filter:brightness(1.08)}
+  .note{font-size:13px;color:var(--mut);margin-top:12px}
+  section{padding:48px 0;border-top:1px solid var(--bd);margin-top:56px}
+  .problem{font-size:17px}
+  .problem b{color:var(--fg)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px}
+  .card h3{font-size:15px;margin-bottom:8px}
+  .card.bad h3{color:#c96}.card.good h3{color:var(--ok)}
+  .card p{font-size:14px;color:var(--mut)}
+  .how{counter-reset:s;list-style:none}
+  .how li{position:relative;padding:14px 0 14px 44px;border-bottom:1px solid var(--bd);font-size:15px}
+  .how li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:12px;width:28px;height:28px;background:var(--acc);color:#1a1208;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px}
+  code{background:#000;border:1px solid var(--bd);border-radius:6px;padding:2px 7px;font-size:13px;color:var(--acc)}
+  .price{display:flex;align-items:baseline;gap:8px;margin:8px 0 4px}
+  .price .n{font-size:34px;font-weight:800}
+  .price .p{color:var(--mut);font-size:15px}
+  footer{padding:40px 0 64px;color:var(--mut);font-size:13px;text-align:center;border-top:1px solid var(--bd);margin-top:56px}
+  .ok-msg{display:none;background:rgba(74,156,93,.12);border:1px solid var(--ok);color:var(--ok);padding:14px 16px;border-radius:10px;margin-top:16px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">Open-core · early access</span>
+    <h1>Your coding agent burns <span class="hl">$1–15k/mo</span> wandering down wrong paths.</h1>
+    <p class="sub">Gate stops it. It escalates only when the model is <em>actually uncertain</em> — measured from sample disagreement, not guessed from output length. A <code>retry-if-short</code> hack can't catch a confident agent marching 20 steps the wrong way. Gate can.</p>
+    <form class="cta" id="form" onsubmit="return submitEmail(event)">
+      <input type="email" id="email" placeholder="you@agency.dev" required>
+      <button type="submit">Get early access</button>
+    </form>
+    <div class="note">Run it on your own agent logs for 2 weeks, free. You pay only once the dashboard shows the $ it would have saved.</div>
+    <div class="ok-msg" id="ok">Thanks. We'll reach out with early access + a 2-week trial on your logs. Reply to the email with your stack (Aider / OpenHands / SWE-agent / custom) and we'll prioritize.</div>
+  </header>
+
+  <section>
+    <p class="problem"><b>The problem isn't output length — it's confidence.</b> A hard <code>max_steps=15</code> cap is blunt: it kills good tasks at step 14 and still lets runaway ones burn budget before the cap trips. Gate watches whether the model agrees with itself across samples (AUC 0.71–0.91, measured across 16 model families). When it's uncertain, Gate pauses, escalates, or asks — before the spend, not after.</p>
+    <div class="grid">
+      <div class="card bad"><h3>Today: blind cap</h3><p><code>max_steps</code> + <code>max_cost</code> — cuts good tasks early, misses confident-but-wrong loops. Zero signal about <em>why</em> the agent is stuck.</p></div>
+      <div class="card good"><h3>With Gate</h3><p>Escalates on measured uncertainty. Cache (76–79% fix) → web (75–77%) → bigger model — in that order, cheapest first. Only spends when the model truly doesn't know.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 style="font-size:22px;margin-bottom:20px">How it works</h2>
+    <ol class="how">
+      <li>Point your agent at the Gate proxy — <code>base_url</code>, one line. OpenAI-compatible.</li>
+      <li>Gate samples + measures disagreement on each step. Confident → passes through untouched.</li>
+      <li>Uncertain → cascades cache → web → bigger model. Logs every decision + $ saved.</li>
+      <li>Dashboard shows "saved $X in runaway calls" on <em>your</em> logs. You decide if it's worth it.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 style="font-size:22px;margin-bottom:12px">Pricing</h2>
+    <div class="price"><span class="n">$299</span><span class="p">/mo flat · per agent fleet</span></div>
+    <p style="color:var(--mut);font-size:14px">Open-core engine free (pip / GitHub). Paid = hosted proxy + calibrated thresholds + the savings dashboard. Free 2-week trial on your own traffic — no card.</p>
+    <form class="cta" id="form2" onsubmit="return submitEmail(event)">
+      <input type="email" id="email2" placeholder="you@agency.dev" required>
+      <button type="submit">Start free trial</button>
+    </form>
+  </section>
+
+  <footer>
+    Gate by BGML.ai · open-core (Apache 2.0) · built in the EU.<br>
+    Early access — we're onboarding a handful of agent shops first. Tell us your runaway-spend story.
+  </footer>
+</div>
+<script>
+// Fake-door: capture intent. POST do /api/lead jesli istnieje, inaczej localStorage + mailto fallback.
+async function submitEmail(e){
+  e.preventDefault();
+  var inp = e.target.querySelector('input[type=email]');
+  var email = inp.value.trim();
+  if(!email) return false;
+  var lead = {email:email, ts:new Date().toISOString(), ref:document.referrer||'direct', ua:navigator.userAgent};
+  try{
+    await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lead)});
+  }catch(_){}
+  try{ var L=JSON.parse(localStorage.getItem('gate_leads')||'[]'); L.push(lead); localStorage.setItem('gate_leads',JSON.stringify(L)); }catch(_){}
+  document.getElementById('ok').style.display='block';
+  e.target.reset();
+  // analityka: licznik konwersji widoczny w konsoli i localStorage
+  console.log('[gate-lead]', lead);
+  return false;
+}
+</script>
+</body>
+</html>
