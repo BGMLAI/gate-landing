@@ -329,14 +329,14 @@
 // Lead capture. POST to Formspree (works on static GitHub Pages — lead lands in owner's inbox).
 // localStorage fallback when endpoint unset/offline.
 // SETUP (2 min): formspree.io → New Form → paste form ID below in place of FORM_ID.
-var FORMSPREE = "https://formspree.io/f/FORM_ID";
+var FORMSPREE = "https://mesh.bgml.ai/api/lead";  // wlasny backend na VPS, dziala
 async function submitEmail(e){
   e.preventDefault();
   var inp = e.target.querySelector('input[type=email]');
   var email = (inp && inp.value || '').trim();
   if(!email) return false;
   var lead = {email:email, ts:new Date().toISOString(), ref:document.referrer||'direct', _subject:'Gate early-access lead'};
-  if(FORMSPREE.indexOf('FORM_ID')===-1){
+  if(true){
     try{ await fetch(FORMSPREE,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(lead)}); }catch(_){}
   }
   try{ var L=JSON.parse(localStorage.getItem('gate_leads')||'[]'); L.push(lead); localStorage.setItem('gate_leads',JSON.stringify(L)); }catch(_){}
